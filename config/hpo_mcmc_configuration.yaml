@@ -1,0 +1,49 @@
+# config.yaml  
+
+sampling:
+ min_tasks_scaler: 2
+ min_size: 2
+
+
+# MCMC run configuration.
+mcmc:
+  num_iterations: 100000         # Total number of MCMC iterations.
+  num_iterations_debug: 10000    # Number of iterations to print debug information.
+  K: 3                         # Latent dimension (number of columnsin U).
+  update_probabilities:
+    rho: 0.1                   # Proportion of iterations to update rho.
+    tau: 0.1                   # Proportion of iterations to update tau.
+    rho_tau: 0.1               # Proportion of iterations to update rho and tau.
+    noise: 0.1                # Proportion of iterations to update noise parameters.
+    U_0: 0.2                     # Proportion of iterations to update the latent variable U
+    U_a: 0.2                    # There are more matrix parameters in the Ua thus we assigner higher prob
+    K: 0.1               # Proportion of iterations to update the number of latent dimensions K.
+    beta: 0.1
+
+#    K: 0.2                     # Proportion of iterations to update the number of latent dimensions K.
+reversible_two_factors:
+  rho_tau_update: True 
+
+# Configuration for updating ρ.
+rho:
+  dr: 0.8                     # Multiplicative step size for rho update.
+
+# Configuration for updating ρ&τ.
+rhotau:
+  drrt: 0.5            # Multiplicative step size for rho tau update.
+
+beta:
+  drbeta: 0.8                     # Multiplicative step size for beta update.
+
+# Configuration for noise parameter updates.
+noise:
+  noise_option: "queue_jump"  # Options: "mallows_noise" or "queue_jump".
+  sigma_mallow: 0.5           # Proposal standard deviation for Mallows theta update.
+
+# Prior parameters.
+prior:
+  rho_prior: 0.16667          # Prior parameter for rho.
+  noise_beta_prior: 9       # Beta prior parameter for the noise parameter.
+  mallow_ua: 10             # Exponential rate parameter for Mallows theta.
+  k_prior: 3              # Prior parameter for the number of latent dimensions K.
+  sigma_beta: 1.0        # Prior standard deviation for beta.
