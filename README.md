@@ -25,7 +25,7 @@ Let $\alpha_M = X\beta$ and $\Sigma_\rho$ be as in Section 3; $0 < \tau \le 1$; 
 #### Latent Gaussian hierarchy
 
 $$
-U_{j,:}^{(0)} \sim \mathcal N\!\bigl(\mathbf 0,\Sigma_\rho\bigr), \quad j\in M_0,
+U_{j,:}^{(0)} \sim \mathcal N\bigl(\mathbf 0,\Sigma_\rho\bigr), \quad j\in M_0,
 $$
 
 $$
@@ -67,11 +67,12 @@ hpo_inference/
 │       ├── po_fun_plot.py    # Visualization utilities
 │       └── po_accelerator_nle.py # Likelihood acceleration
 ├── tests/                    # Test cases
-│   └── hpo_debugger_test.py  # Validation tests
+│   ├── hpo_debugger_test.py  # Parameter validation tests
+│   └── extreme_case_test.py  # Tests for edge cases
 ├── config/                   # Configuration files
 │   └── hpo_mcmc_configuration.yaml
 ├── notebooks/                # Example analyses
-│   └── hpo_mcmc_simulation_betak.ipynb
+│   └── hpo_mcmc_simulation.ipynb
 └── data/
     └── observed_rankings.csv # Generated rankings
 ```
@@ -93,11 +94,11 @@ conda activate hpo_env
 # Define basic parameters
 K = 3                       # Latent dimension
 rho_prior = 0.1667          # Prior parameter for correlation
-n = 10                      # Number of items in global set
+n = len(items_df['item_id'].unique())      # Number of items in global set
 items = list(range(n))      # Global item set
 
 # Define assessor structure
-assessors = [1, 2, 3]       # Assessor IDs
+assessors = assessors_df['assessor_id'].tolist()       # Assessor IDs
 M_a_dict = {
     1: [0, 2, 4, 6, 8],     # Assessor 1 evaluates even-indexed items
     2: [1, 3, 5, 7, 9],     # Assessor 2 evaluates odd-indexed items
@@ -106,7 +107,7 @@ M_a_dict = {
 
 # Generate the hierarchical partial orders
 h_U_dict = StatisticalUtils.build_hierarchical_partial_orders(
-    M0=items,        
+    M0=items,  
     assessors=assessors,   
     M_a_dict=M_a_dict,   
     U0=U_global,           # Global latent positions
@@ -157,25 +158,25 @@ mcmc_pt = [
 mcmc_results = mcmc_simulation_hpo(
     num_iterations=num_iterations,
     M0=items,
-    assessors=assessors,
-    M_a_dict=M_a_dict,
-    O_a_i_dict=O_a_i_dict,
+        assessors=assessors,
+        M_a_dict=M_a_dict,
+        O_a_i_dict=O_a_i_dict,
     observed_orders=y_a_i_dict,
     sigma_beta=sigma_beta,  
     X=X,  
-    K=K,
-    dr=dr,
-    drrt=drrt,
+        K=K,    
+        dr=dr,
+        drrt=drrt,
     drbeta=drbeta,
-    sigma_mallow=sigma_mallow,
-    noise_option=noise_option,
+        sigma_mallow=sigma_mallow,
+        noise_option=noise_option,
     mcmc_pt=mcmc_pt,
-    rho_prior=rho_prior,
-    noise_beta_prior=noise_beta_prior,
-    mallow_ua=mallow_ua,
-    rho_tau_update=rho_tau_update,
-    random_seed=42
-)
+        rho_prior=rho_prior,
+        noise_beta_prior=noise_beta_prior,
+        mallow_ua=mallow_ua,
+        rho_tau_update=rho_tau_update,
+        random_seed=42
+    )
 ```
 
 #### Reversible-Jump K Inference
@@ -195,36 +196,82 @@ mcmc_pt = [
 
 # Run MCMC with variable K (reversible jump)
 mcmc_results_k = mcmc_simulation_hpo_k(
-    num_iterations=num_iterations,
+        num_iterations=num_iterations,
     M0=items,
-    assessors=assessors,
-    M_a_dict=M_a_dict,
-    O_a_i_dict=O_a_i_dict,
+        assessors=assessors,
+        M_a_dict=M_a_dict,
+        O_a_i_dict=O_a_i_dict,
     observed_orders=y_a_i_dict,
     sigma_beta=sigma_beta,  
     X=X,  
-    dr=dr,
-    drrt=drrt,
+        dr=dr,
+        drrt=drrt,
     drbeta=drbeta,
-    sigma_mallow=sigma_mallow,
-    noise_option=noise_option,
+        sigma_mallow=sigma_mallow,
+        noise_option=noise_option,
     mcmc_pt=mcmc_pt,
-    rho_prior=rho_prior,
-    noise_beta_prior=noise_beta_prior,
-    mallow_ua=mallow_ua,
-    K_prior=K_prior,
-    rho_tau_update=rho_tau_update,
-    random_seed=42
-)
+        rho_prior=rho_prior,
+        noise_beta_prior=noise_beta_prior,
+        mallow_ua=mallow_ua,
+        K_prior=K_prior,
+        rho_tau_update=rho_tau_update,
+        random_seed=42
+    )
 ```
 
-### 4. Analyzing MCMC Results
+## Test Cases
 
-After running MCMC, the results can be analyzed for:
+The package includes comprehensive test cases for validating the MCMC implementation. All tests output diagnostic plots to the `tests/hpo_test_output` directory.
 
-- Posterior distributions of hyperparameters (ρ, τ, K, noise parameters)
-- Acceptance rates and mixing diagnostics
-- Comparisons between true and inferred partial orders
+### Running Tests
+
+Tests are organized by parameter and edge case scenarios. To run specific tests, use:
+
+```bash
+# To run tests for specific parameters:
+python -m tests.hpo_debugger_test rho       # Test rho parameter updates
+python -m tests.hpo_debugger_test tau       # Test tau parameter updates
+python -m tests.hpo_debugger_test rhotau    # Test joint rho-tau updates
+python -m tests.hpo_debugger_test p         # Test probability of noise updates
+python -m tests.hpo_debugger_test theta     # Test Mallows theta parameter
+python -m tests.hpo_debugger_test k         # Test dimension parameter K (reversible jump)
+python -m tests.hpo_debugger_test u0        # Test global latent positions
+python -m tests.hpo_debugger_test ua        # Test assessor-specific latent positions
+python -m tests.hpo_debugger_test beta      # Test covariate parameter updates
+
+# To run extreme case tests:
+python -m tests.extreme_case_test
+```
+
+### Parameter Tests (hpo_debugger_test.py)
+
+The `hpo_debugger_test.py` script includes multiple functions for testing different MCMC parameter updates:
+
+- **check_rho()**: Tests if the correlation parameter ρ follows its theoretical posterior distribution (truncated Beta). Outputs histograms and diagnostic plots.
+- **check_tau()**: Tests if the hierarchical coupling parameter τ follows its theoretical distribution (Uniform). Outputs histograms with theoretical overlays.
+- **check_rho_tau()**: Tests joint updates of ρ and τ parameters using reversible proposals. Checks acceptance rates and distribution accuracy.
+- **check_P()**: Tests updates of probability noise parameter for queue-jump noise model. Validates against theoretical Beta distribution.
+- **check_theta()**: Tests Mallows theta parameter updates for the Mallows noise model. Verifies exponential prior recovery.
+- **check_U0()**: Tests global latent position updates. Checks for correct correlation structure and marginal distributions.
+- **check_Ua()**: Tests assessor-specific latent positions. Verifies the hierarchical relationship: U_a ~ N(τU_0, (1-τ²)Σ).
+- **check_K()**: Tests reversible jump dimension updates. Validates acceptance rates and dimension posterior probabilities.
+- **check_beta()**: Tests covariate parameter updates. Tests with different step sizes to diagnose acceptance rate issues.
+
+Each test function outputs:
+
+- Distribution histograms with theoretical overlays
+- Trace plots showing MCMC mixing
+- Log-likelihood diagnostics
+- Acceptance rate statistics
+
+### Extreme Case Tests (extreme_case_test.py)
+
+The `extreme_case_test.py` script tests edge cases:
+
+- **TAU=0 Scenario**: When τ=0, assessor-specific latent positions become independent from global positions. This tests whether U_a ~ N(0, Σ) when τ=0.
+- **TAU=1 Scenario**: When τ=1, assessor-specific latent positions exactly match global positions. Tests if U_a = U_0 when τ=1.
+
+This test showcases how the hierarchical model handles these extreme parameter settings and validates the theoretical properties of the model.
 
 ## Configuration Options
 
@@ -236,7 +283,7 @@ sampling:
  min_size: 2                # Minimum size of choice sets
 
 mcmc:
-  num_iterations: 10000     # Total number of MCMC iterations
+  num_iterations: 50000     # Total number of MCMC iterations
   K: 3                      # Latent dimension for fixed-K inference
   update_probabilities:
     rho: 0.1                # Proportion of iterations to update rho
@@ -288,65 +335,6 @@ This file contains the observed total order rankings:
 - `task_id`: Task identifier
 - `choice_set`: Comma-separated list of item IDs in the choice set
 - `observed_ranking`: Comma-separated list of item IDs in the observed ranking order (best to worst)
-
-
-### Example Usage
-
-The included `data/load_data_example.py` script demonstrates how to load and use these data files with the hierarchical partial order inference package:
-
-```python
-# Load data and configuration
-data = prepare_mcmc_input_data()
-config = load_config("config/hpo_mcmc_configuration.yaml")
-
-# Choose inference type based on configuration
-
-# Run MCMC inference with configuration parameters
-results = run_mcmc_inference(data, config, use_reversible_jump=True)
-
-# Analyze results
-analyze_results(results, data, use_reversible_jump)
-```
-
-The script handles:
-
-1. Loading data from CSV files into the required format
-2. Reading parameters from the configuration file
-3. Setting up MCMC parameters based on the configuration
-4. Running the appropriate MCMC algorithm (fixed K or reversible-jump)
-5. Analyzing and visualizing the results
-
-### Data Format for Your Own Datasets
-
-To use your own data:
-
-1. Format your item characteristics in the same structure as `item_characteristics.csv`
-2. Format your observed rankings in the same structure as `observed_rankings.csv`
-3. Update your configuration in `config/hpo_mcmc_configuration.yaml` to match your dataset
-4. Use the `prepare_mcmc_input_data()` function to convert these files into the format required by the MCMC functions
-
-## Test Cases
-
-The package includes test cases for validating the MCMC implementation:
-
-### No Data Tests
-
-Tests for when no actual ranking data is provided, verifying that the model recovers the prior distributions.
-
-### Extreme Scenario Tests
-
-Tests for edge cases such as:
-
-- When τ is close to 0 (assessors independent from global consensus)
-- When τ is close to 1 (assessors perfectly follow global consensus)
-- When ρ has extreme values
-- When the noise level is very high or low
-
-To run tests:
-
-```bash
-python -m tests.hpo_debugger_test
-```
 
 ## Example Notebook
 

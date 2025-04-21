@@ -6,7 +6,7 @@ import math
 import random
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Union
 
 from src.utils.po_fun import BasicUtils, StatisticalUtils
 from src.utils.po_accelerator_nle import HPO_LogLikelihoodCache
@@ -22,7 +22,7 @@ def mcmc_simulation_hpo_k(
     O_a_i_dict: Dict[int, List[List[int]]], 
     observed_orders: Dict[int, List[List[int]]],
     # Additional model parameters
-    sigma_beta: float,  
+    sigma_beta: float,  # Can accept scalar or array
     X,  # X: np.ndarray of covariates 
     dr: float,          # multiplicative step size for rho
     drrt: float,        # multiplicative step size for tau and rho 
@@ -63,11 +63,15 @@ def mcmc_simulation_hpo_k(
 
     # the covariates
     p = X.shape[0]
+    
+
+
+    # Generate initial beta using the array version
     beta_true = rng.normal(loc=0.0, scale=sigma_beta, size=(p,))
     beta = beta_true.copy()  # add beta so that update beta later works
     alpha = X.T @ beta
 
-
+    # Create proposal covariance matrix using the array
     Sigma_prop = (drbeta**2) * (sigma_beta**2) * np.eye(p)
 
 
@@ -208,7 +212,8 @@ def mcmc_simulation_hpo_k(
             proposed_rho_vals.append(rho_prime)
             update_type_timing = time.time() - upd_start
 
-        # ------------------------------------------------
+        # -------------------------------------------
+        # -----
         # Update 2: Tau
         # ------------------------------------------------
         elif r < thresh_tau:
@@ -301,18 +306,7 @@ def mcmc_simulation_hpo_k(
                 total_prior_time = time.time() - prior_start
 
                 llk_start = time.time()
-                log_llk_current = HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
-                    U=U,
-                    h_U=h_U,
-                    observed_orders=observed_orders,
-                    M_a_dict=M_a_dict,
-                    O_a_i_dict=O_a_i_dict,
-                    item_to_index=item_to_index,
-                    prob_noise=prob_noise,
-                    mallow_theta=mallow_theta,
-                    noise_option=noise_option,
-                    alpha=alpha
-                )
+                log_llk_current = log_llk_current
                 log_llk_proposed = HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
                     U=U,
                     h_U=h_U,
@@ -353,18 +347,7 @@ def mcmc_simulation_hpo_k(
                 total_prior_time = dt
 
                 llk_start = time.time()
-                log_llk_current = HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
-                    U=U,
-                    h_U=h_U,
-                    observed_orders=observed_orders,
-                    M_a_dict=M_a_dict,
-                    O_a_i_dict=O_a_i_dict,
-                    item_to_index=item_to_index,
-                    prob_noise=prob_noise,
-                    mallow_theta=mallow_theta,
-                    noise_option=noise_option,
-                    alpha=alpha
-                )
+                log_llk_current = log_llk_current
                 log_llk_proposed = HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
                     U=U,
                     h_U=h_U,
@@ -544,7 +527,7 @@ def mcmc_simulation_hpo_k(
             if K == 1:
                 move = "up"
             else:
-                move = "up" if rng.random() > 0.5 else "down"
+                move = "up" if rng.random() < 0.5 else "down"
 
             if move == "up":
                 K_prime = K + 1
@@ -578,28 +561,13 @@ def mcmc_simulation_hpo_k(
 
                 # Evaluate prior and likelihood
                 
-                lp_current = ( StatisticalUtils.log_U_prior(U0, rho, K)
-                                 + StatisticalUtils.log_U_a_prior(U_a_dict, tau, rho, K, M_a_dict, U0)
-                                 + logK_current )
-                lp_proposed= ( StatisticalUtils.log_U_prior(U0_prime, rho, K_prime)
-                                + StatisticalUtils.log_U_a_prior(U_a_dict_prime, tau, rho, K_prime, M_a_dict, U0_prime)
-                                + logK_proposed )
+                lp_current = logK_current 
+                lp_proposed= logK_proposed 
             
                 total_prior_time = time.time() - prior_start
 
                 llk_start = time.time()
-                log_llk_current = HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
-                    U={"U0": U0, "U_a_dict": U_a_dict},
-                    h_U=h_U,
-                    observed_orders=observed_orders,
-                    M_a_dict=M_a_dict,
-                    O_a_i_dict=O_a_i_dict,
-                    item_to_index=item_to_index,
-                    prob_noise=prob_noise,
-                    mallow_theta=mallow_theta,
-                    noise_option=noise_option,
-                    alpha=alpha
-                )
+                log_llk_current = log_llk_current
                 log_llk_proposed= HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
                     U={"U0": U0_prime, "U_a_dict": U_a_dict_prime},
                     h_U=h_U_prime,
@@ -658,28 +626,13 @@ def mcmc_simulation_hpo_k(
                     # Evaluate prior and likelihood
                     logK_current  = StatisticalUtils.dKprior(K, K_prior)
                     logK_proposed = StatisticalUtils.dKprior(K_prime, K_prior)
-                    lp_current = ( StatisticalUtils.log_U_prior(U0, rho, K)
-                                 + StatisticalUtils.log_U_a_prior(U_a_dict, tau, rho, K, M_a_dict, U0)
-                                 + logK_current )
-                    lp_proposed= ( StatisticalUtils.log_U_prior(U0_prime, rho, K_prime)
-                                 + StatisticalUtils.log_U_a_prior(U_a_dict_prime, tau, rho, K_prime, M_a_dict, U0_prime)
-                                 + logK_proposed )
+                    lp_current = logK_current 
+                    lp_proposed= logK_proposed
               
                     total_prior_time = time.time() - prior_start
 
                     llk_start = time.time()
-                    log_llk_current = HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
-                        U={"U0": U0, "U_a_dict": U_a_dict},
-                        h_U=h_U,
-                        observed_orders=observed_orders,
-                        M_a_dict=M_a_dict,
-                        O_a_i_dict=O_a_i_dict,
-                        item_to_index=item_to_index,
-                        prob_noise=prob_noise,
-                        mallow_theta=mallow_theta,
-                        noise_option=noise_option,
-                        alpha=alpha
-                    )
+                    log_llk_current = log_llk_current
                     log_llk_proposed= HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
                         U={"U0": U0_prime, "U_a_dict": U_a_dict_prime},
                         h_U=h_U_prime,
@@ -721,8 +674,10 @@ def mcmc_simulation_hpo_k(
             epsilon = rng.multivariate_normal(np.zeros(p), Sigma_prop)
             beta_prime = beta + epsilon
             alpha_prime = X.T @ beta_prime
-            lp_current = StatisticalUtils.dBetaprior(beta,sigma_beta)
-            lp_proposed = StatisticalUtils.dBetaprior(beta_prime,sigma_beta)
+            
+            # Use sigma_beta_array for the prior calculation
+            lp_current = StatisticalUtils.dBetaprior(beta, sigma_beta)
+            lp_proposed = StatisticalUtils.dBetaprior(beta_prime, sigma_beta)
             total_prior_time = time.time() - prior_start
 
             h_U_prime = StatisticalUtils.build_hierarchical_partial_orders(
@@ -735,18 +690,7 @@ def mcmc_simulation_hpo_k(
             )
 
             llk_start = time.time()
-            log_llk_current = HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
-                U=U,
-                h_U=h_U,
-                observed_orders=observed_orders,
-                M_a_dict=M_a_dict,
-                O_a_i_dict=O_a_i_dict,
-                item_to_index=item_to_index,
-                prob_noise=prob_noise,
-                mallow_theta=mallow_theta,
-                noise_option=noise_option,
-                alpha=alpha
-            )
+            log_llk_current = log_llk_current
             log_llk_proposed = HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
                 U=U,
                 h_U=h_U_prime,
@@ -835,6 +779,7 @@ def mcmc_simulation_hpo_k(
         # Final state
         "rho_final": rho,
         "tau_final": tau,
+        "beta_final": beta,
         "prob_noise_final": prob_noise,
         "mallow_theta_final": mallow_theta,
         "K_final": K,

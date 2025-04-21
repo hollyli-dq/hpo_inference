@@ -4,7 +4,7 @@ import sys
 from scipy.stats import multivariate_normal,norm
 from scipy.special import betaln, gammaln
 from tabulate import tabulate
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 
 
 import networkx as nx
@@ -1511,32 +1511,73 @@ class StatisticalUtils:
 
 
     @staticmethod
-    def dBetaprior(beta: np.ndarray, sigma_beta: float) -> float:
+    def dBetaprior(beta: np.ndarray, sigma_beta: Union[float, np.ndarray]) -> float:
         """
-        Log-pdf of a multivariate Normal(0, sigma_beta^2 * I_p) at point 'beta'.
+        Log-pdf of a multivariate Normal(0, Sigma) at point 'beta', where Sigma is a diagonal matrix.
         
+        Parameters:
+        -----------
         beta: shape (p,)
-        sigma_beta: scalar, the prior std dev for each coefficient.
+            Vector of coefficients
+        sigma_beta: float or np.ndarray of shape (p,)
+            The prior standard deviation(s) for each coefficient.
+            Can be either a scalar (same std dev for all coefficients) or an array (different std dev per coefficient)
         
-        Full formula for log N(0, sigma_beta^2 I) is:
+        Returns:
+        --------
+        float
+            The log-density value
+            
+        Notes:
+        ------
+        When sigma_beta is a scalar, formula is:
           - (p/2) * log(2*pi) 
           - p*log(sigma_beta)
-          - (1 / (2*sigma_beta^2)) * sum(beta^2).
+          - (1 / (2*sigma_beta^2)) * sum(beta^2)
+          
+        When sigma_beta is an array, formula is:
+          - (p/2) * log(2*pi) 
+          - sum(log(sigma_beta))  # sum of logs instead of p times log of one value
+          - sum(beta^2 / (2*sigma_beta^2))  # element-wise division by the variances
         """
         p = len(beta)
-        log_det_part = -0.5 * p * math.log(2.0 * math.pi) - p * math.log(sigma_beta)
-        quad_part = -0.5 * np.sum(beta**2) / (sigma_beta**2)
+        
+        if np.isscalar(sigma_beta):
+            # Original implementation for scalar sigma_beta
+            log_det_part = -0.5 * p * math.log(2.0 * math.pi) - p * math.log(sigma_beta)
+            quad_part = -0.5 * np.sum(beta**2) / (sigma_beta**2)
+        else:
+            # Handle array case
+            if len(sigma_beta) != p:
+                raise ValueError(f"sigma_beta must be a scalar or have length {p} to match beta")
+            
+            log_det_part = -0.5 * p * math.log(2.0 * math.pi) - np.sum(np.log(sigma_beta))
+            quad_part = -0.5 * np.sum(beta**2 / (sigma_beta**2))
+            
         return log_det_part + quad_part
 
     @staticmethod
-    def rBetaPrior(sigma_beta: float, p: int) -> np.ndarray:
+    def rBetaPrior(sigma_beta: Union[float, np.ndarray], p: int) -> np.ndarray:
         """
-        Sample a new beta from a Normal(0, sigma_beta^2 * I_p) distribution.
+        Sample a new beta from a Normal(0, Sigma) distribution, where Sigma is a diagonal matrix.
         
-        sigma_beta: scalar, the prior std dev for each coefficient.
-        p: integer, dimension of beta.
+        Parameters:
+        -----------
+        sigma_beta: float or np.ndarray
+            If scalar: the same prior std dev for each coefficient (diagonal elements will be sigma_beta^2)
+            If array: different prior std dev for each coefficient (must have length p)
+        p: integer
+            Dimension of beta.
         
-        Returns: beta, shape (p,).
+        Returns:
+        --------
+        np.ndarray
+            Sampled beta vector of shape (p,)
         """
-        return np.random.normal(loc=0.0, scale=sigma_beta, size=(p,))
+        if np.isscalar(sigma_beta):
+            return np.random.normal(loc=0.0, scale=sigma_beta, size=(p,))
+        else:
+            if len(sigma_beta) != p:
+                raise ValueError(f"If sigma_beta is an array, it must have length {p}")
+            return np.random.normal(loc=0.0, scale=sigma_beta, size=(p,))
 

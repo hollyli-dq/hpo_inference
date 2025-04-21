@@ -27,7 +27,7 @@ from src.utils.po_accelerator_nle import HPO_LogLikelihoodCache
 
 
 
-def mcmc_simulation_hpo(
+def mcmc_simulation_hpo_fixed_tau(
     num_iterations: int,
     # Hierarchy definition
     M0: List[int],
@@ -41,7 +41,6 @@ def mcmc_simulation_hpo(
     X,  # X: np.ndarray of covariates 
     K: int,                  # dimension of latent space
     dr: float,  # multiplicative step size for rho
-    drrt: float,  # multiplicative step size for tau and rho 
     drbeta: float,      # the beta updated step size
     # noise / priors
     sigma_mallow: float,
@@ -52,8 +51,7 @@ def mcmc_simulation_hpo(
     rho_prior, 
     noise_beta_prior: float,
     mallow_ua: float,
-    # Optional
-    rho_tau_update: bool = False,
+    tau_value: float,
     random_seed: int = 42 
                        ) -> Dict[str, Any]:
 
@@ -84,7 +82,7 @@ def mcmc_simulation_hpo(
     prob_noise = StatisticalUtils.rPprior(noise_beta_prior) # Beta(1, noise_beta_prior)
     mallow_theta = StatisticalUtils.rTprior(mallow_ua)   # e.g. uniform(0.1,0.9)
     #tau = StatisticalUtils.rTauprior()  # initial tau from its prior
-    tau=0.5 
+    tau=tau_value 
     Sigma_rho = BasicUtils.build_Sigma_rho(K,rho)
 
 
@@ -119,12 +117,10 @@ def mcmc_simulation_hpo(
     Ua_trace = []
     H_trace = []  
     rho_trace = []
-    tau_trace = []
     prob_noise_trace = []
     beta_trace=[]
     mallow_theta_trace = []
     proposed_rho_vals = []
-    proposed_tau_vals = []
     proposed_prob_noise_vals = []
     proposed_mallow_theta_vals = []
     proposed_U0 = []
@@ -143,12 +139,11 @@ def mcmc_simulation_hpo(
     mcmc_pt = mcmc_pt / mcmc_pt.sum()
 
 # Now unpack the normalized percentages:
-    rho_pct, tau_pct, rho_tau_pct, noise_pct, U0_pct, Ua_pct, beta_pct = mcmc_pt
+    rho_pct, noise_pct, U0_pct, Ua_pct, beta_pct = mcmc_pt
 
     thresh_rho = rho_pct
-    thresh_tau =thresh_rho + tau_pct
-    threshold_rho_tau_pct = thresh_tau + rho_tau_pct
-    thresh_noise =  threshold_rho_tau_pct+ noise_pct
+
+    thresh_noise =  thresh_rho+ noise_pct
     threshold_U0_pct =  thresh_noise+ U0_pct
     threshold_Ua_pct = threshold_U0_pct+ Ua_pct
     thresh_beta       =threshold_Ua_pct  + beta_pct  
@@ -238,109 +233,7 @@ def mcmc_simulation_hpo(
 
 
 
-        # ---- B) Update tau ----
-
-        elif r < thresh_tau:
-            update_category = "tau"
-            upd_start = time.time()
-            tau_prime = StatisticalUtils.rTauprior()
-
-            prior_start = time.time()
-            log_prior_current = (
-
-                 StatisticalUtils.log_U_a_prior(U_a_dict, tau, rho, K, M_a_dict, U0)
-      
-            )
-            # new prior
-            log_prior_proposed = (
-      
-                StatisticalUtils.log_U_a_prior(U_a_dict, tau_prime, rho, K, M_a_dict, U0)
-            )
-            total_prior_time = time.time() - prior_start
-
-
-
-
-
-            llk_start = time.time()     
-            log_llk_proposed = log_llk_current
-            dt = time.time() - llk_start
-            total_likelihood_time = dt
-
-            # Data-likelihood may or may not change if code uses tau explicitly in the likelihood
-            # We'll assume it does not, or does so in partial
-            # We'll skip re-sampling U => same partial approach
-            log_accept_ratio = log_prior_proposed - log_prior_current 
-            
-            log_accept_ratio=min(log_accept_ratio,700)
-            accept_prob = min(1.0, math.exp(min(log_accept_ratio, 700)))
-
-
-            if random.random() < accept_prob:
-                tau = tau_prime
-                num_acceptances += 1
-                acceptance_decisions.append(1)
-                accepted_this_iter = True
-
-            else:
-                acceptance_decisions.append(0)
-            proposed_tau_vals.append(tau_prime)
-            update_type_timing= time.time() - upd_start
-
-
-
-        ## Update rho and tau together
-        elif r < threshold_rho_tau_pct:
-            update_category = "rho_tau"
-            delta = random.uniform(drrt, 1.0 / drrt)
-            upd_start = time.time()
-            rho_prime = 1.0 - (1.0 - rho) * delta
-            tau_prime =1.0 - (1.0 - tau) * (1/delta)
-
-            if not (0.0 < rho_prime < 1.0):
-                rho_prime = rho
-            if not (0.0 < tau_prime < 1.0):
-                tau_prime = tau
-            Sigma_rho_prime = BasicUtils.build_Sigma_rho(K,rho_prime) 
-
-            prior_start = time.time()
-            log_prior_current= (
-                StatisticalUtils.log_U_prior(U0, rho, K)
-                +StatisticalUtils.log_U_a_prior(U_a_dict, tau, rho, K, M_a_dict, U0)
-                + StatisticalUtils.dTauprior(tau)
-                + StatisticalUtils.dRprior(rho, rho_prior)
-            )
-            log_prior_proposed= (
-                StatisticalUtils.log_U_prior(U0, rho_prime, K)
-                + StatisticalUtils.log_U_a_prior(U_a_dict, tau_prime, rho_prime, K, M_a_dict, U0)
-                + StatisticalUtils.dTauprior(tau_prime)
-                + StatisticalUtils.dRprior(rho_prime, rho_prior)
-            )
-            total_prior_time = time.time() - prior_start
-
-
-
-            llk_start = time.time()     
-            log_llk_proposed = log_llk_current
-            dt = time.time() - llk_start
-            total_likelihood_time = dt
-
-            ## The likelihood terms cancels out since there is no change in the input for likelihood calcualtion 
-            log_acceptance_ratio = log_prior_proposed- log_prior_current - 2 * math.log(delta)
-            
-
-            if random.random() < min(1.0, np.exp(log_acceptance_ratio)):
-                rho = rho_prime
-                tau = tau_prime
-                num_acceptances += 1
-                acceptance_decisions.append(1)
-                accepted_this_iter = True
-            else:
-                acceptance_decisions.append(0)
-            proposed_tau_vals.append(tau_prime)
-            proposed_rho_vals.append(rho_prime)   
-            update_type_timing= time.time() - upd_start
-
+  
 
         # ---- B) Update noise parameter ----
         elif r < thresh_noise:
@@ -634,7 +527,7 @@ def mcmc_simulation_hpo(
         # Append current parameter values to trace lists for debugging
         if iteration % 100 == 0:
             rho_trace.append(rho)
-            tau_trace.append(tau)
+
             beta_trace.append(beta)
             prob_noise_trace.append(prob_noise)
             mallow_theta_trace.append(mallow_theta)
@@ -662,7 +555,7 @@ def mcmc_simulation_hpo(
     
     result_dict = {
         "rho_trace": rho_trace,
-        "tau_trace": tau_trace,
+
         "prob_noise_trace": prob_noise_trace,
         "mallow_theta_trace": mallow_theta_trace,
         "U0_trace": U0_trace,
@@ -670,7 +563,7 @@ def mcmc_simulation_hpo(
         "H_trace": H_trace,
         "beta_trace": beta_trace,
         "proposed_rho_vals": proposed_rho_vals,
-        "proposed_tau_vals": proposed_tau_vals,
+
         "proposed_prob_noise_vals": proposed_prob_noise_vals,
         "proposed_mallow_theta_vals": proposed_mallow_theta_vals,
         "acceptance_decisions": acceptance_decisions,
