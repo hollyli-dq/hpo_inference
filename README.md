@@ -37,7 +37,7 @@ $$
 $$
 
 $$
-h^{(a)} = h\!\bigl(\eta^{(a)}\bigr), \quad a = 0,\dots,A.
+h^{(a)} = h\bigl(\eta^{(a)}\bigr), \quad a = 0,\dots,A.
 $$
 
 Define $\eta(U,\beta)=\bigl(\eta^{(0)},\eta^{(1)},\dots,\eta^{(A)}\bigr)$ and $h = h\!\bigl(\eta(U,\beta)\bigr)$.
