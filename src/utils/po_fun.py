@@ -1030,14 +1030,18 @@ class StatisticalUtils:
 
 ### Tau 
     @staticmethod
-    def rTauprior():
-        return random.uniform(0, 1) 
+    def rTauprior(tol: float = 1e-4):
+        """Sample tau ~ Uniform(0, 1 - tol] to avoid singular covariance when tau is too close to 1."""
+        return random.uniform(0.0, 1.0 - tol)
 
 
     @staticmethod
-    def dTauprior(tau):
-        return math.log(1)
-
+    def dTauprior(tau: float, tol: float = 1e-4):
+        """Log-density of the (truncated) Uniform(0, 1-tol] prior for tau."""
+        if tau <= 0.0 or tau >= 1.0 - tol:
+            return -math.inf
+        # Density of Uniform(0, 1-tol] is 1/(1-tol)
+        return -math.log(1.0 - tol)
 ####Theta  
 
     @staticmethod

@@ -1,0 +1,68 @@
+\begin{thebibliography}{12}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Baker et~al.(1994)Baker, Gutman, and Schneiderman]{baker1994partial}
+Stephen Baker, Yonatan Gutman, and Ron Schneiderman.
+\newblock Partial order, not partial chaos.
+\newblock \emph{Journal of Combinatorial Theory, Series A}, 67\penalty0 (2):\penalty0 174--183, 1994.
+
+\bibitem[Boutilier(1999)]{boutilier1999sequential}
+Craig Boutilier.
+\newblock Sequential optimality and coordination in multiagent systems.
+\newblock \emph{International Joint Conference on Artificial Intelligence}, 16:\penalty0 478--485, 1999.
+
+\bibitem[Charniak(1993)]{charniak1993bayesian}
+Eugene Charniak.
+\newblock Bayesian networks without tears.
+\newblock \emph{AI Magazine}, 12\penalty0 (4):\penalty0 50--63, 1993.
+
+\bibitem[Durfee(1999)]{durfee1999distributed}
+Edmund~H Durfee.
+\newblock Distributed problem solving and planning.
+\newblock \emph{Multiagent Systems: A Modern Approach to Distributed Artificial Intelligence}, pages 121--164, 1999.
+
+\bibitem[Geib and Goldman(2001)]{geib2001recognition}
+Christopher~W Geib and Robert~P Goldman.
+\newblock Plan recognition in intrusion detection systems.
+\newblock In \emph{DARPA Information Survivability Conference \& Exposition II}, volume~1, pages 46--55. IEEE, 2001.
+
+\bibitem[Ghavamzadeh et~al.(2015)Ghavamzadeh, Mannor, Pineau, and Tamar]{ghavamzadeh2015bayesian}
+Mohammad Ghavamzadeh, Shie Mannor, Joelle Pineau, and Aviv Tamar.
+\newblock Bayesian reinforcement learning: A survey.
+\newblock \emph{Foundations and Trends in Machine Learning}, 8\penalty0 (5-6):\penalty0 359--483, 2015.
+
+\bibitem[Kaelbling et~al.(1998)Kaelbling, Littman, and Cassandra]{kaelbling1998planning}
+Leslie~Pack Kaelbling, Michael~L Littman, and Anthony~R Cassandra.
+\newblock Planning and acting in partially observable stochastic domains.
+\newblock \emph{Artificial Intelligence}, 101\penalty0 (1-2):\penalty0 99--134, 1998.
+
+\bibitem[Kushmerick et~al.(1995)Kushmerick, Hanks, and Weld]{kushmerick1995algorithm}
+Nicholas Kushmerick, Steve Hanks, and Daniel Weld.
+\newblock An algorithm for probabilistic planning.
+\newblock \emph{Artificial Intelligence}, 76\penalty0 (1-2):\penalty0 239--286, 1995.
+
+\bibitem[Puterman(2014)]{puterman2014markov}
+Martin~L Puterman.
+\newblock \emph{Markov Decision Processes: Discrete Stochastic Dynamic Programming}.
+\newblock John Wiley \& Sons, 2014.
+
+\bibitem[Sacerdoti(1975)]{sacerdoti1975nonlinear}
+Earl~D Sacerdoti.
+\newblock The nonlinear nature of plans.
+\newblock \emph{International Joint Conference on Artificial Intelligence}, 4:\penalty0 206--214, 1975.
+
+\bibitem[Tambe(1997)]{tambe1997towards}
+Milind Tambe.
+\newblock Towards flexible teamwork.
+\newblock In \emph{Journal of Artificial Intelligence Research}, volume~7, pages 83--124, 1997.
+
+\bibitem[Weld(1994)]{weld1994introduction}
+Daniel~S Weld.
+\newblock An introduction to least commitment planning.
+\newblock \emph{AI Magazine}, 15\penalty0 (4):\penalty0 27--27, 1994.
+
+\end{thebibliography}

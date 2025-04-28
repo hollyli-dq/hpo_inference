@@ -6,7 +6,7 @@ import math
 import random
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Any, Union
+from typing import Dict, List, Any
 
 from src.utils.po_fun import BasicUtils, StatisticalUtils
 from src.utils.po_accelerator_nle import HPO_LogLikelihoodCache
@@ -22,7 +22,7 @@ def mcmc_simulation_hpo_k(
     O_a_i_dict: Dict[int, List[List[int]]], 
     observed_orders: Dict[int, List[List[int]]],
     # Additional model parameters
-    sigma_beta: float,  # Can accept scalar or array
+    sigma_beta: float,  # scalar only 
     X,  # X: np.ndarray of covariates 
     dr: float,          # multiplicative step size for rho
     drrt: float,        # multiplicative step size for tau and rho 
@@ -38,7 +38,6 @@ def mcmc_simulation_hpo_k(
     mallow_ua: float,
     K_prior: int,  # e.g. the mean of truncated Poisson or some hyperparam
     # Optional
-    rho_tau_update: bool = False,
     random_seed: int = 42 
 ) -> Dict[str, Any]:
     """
@@ -67,15 +66,11 @@ def mcmc_simulation_hpo_k(
 
 
     # Generate initial beta using the array version
-    beta_true = rng.normal(loc=0.0, scale=sigma_beta, size=(p,))
-    beta = beta_true.copy()  # add beta so that update beta later works
+    beta= rng.normal(loc=0.0, scale=sigma_beta, size=(p,))
     alpha = X.T @ beta
 
     # Create proposal covariance matrix using the array
     Sigma_prop = (drbeta**2) * (sigma_beta**2) * np.eye(p)
-
-
-
     # 2) Initialize U0 (shape = (n_global, K))
     U0 = rng.multivariate_normal(mean=np.zeros(K), cov=Sigma_rho, size=n_global)
 
@@ -90,7 +85,15 @@ def mcmc_simulation_hpo_k(
             cov_mat  = (1.0 - tau**2) * Sigma_rho
             Ua[i_loc, :] = rng.multivariate_normal(mean=mean_vec, cov=cov_mat)
         U_a_dict[a] = Ua
-
+        
+    h_U = StatisticalUtils.build_hierarchical_partial_orders(
+        M0=M0,
+        assessors=assessors,
+        M_a_dict=M_a_dict,
+        U0=U0,
+        U_a_dict=U_a_dict,
+        alpha=alpha
+    )
     # 4) Setup traces
     U0_trace = []
     Ua_trace = []
@@ -123,7 +126,7 @@ def mcmc_simulation_hpo_k(
     update_timing_list = []
 
     mcmc_pt = np.array(mcmc_pt, dtype=float)
-    mcmc_pt /= mcmc_pt.sum()   # now sums to 1.0
+    mcmc_pt = mcmc_pt / mcmc_pt.sum()   # now sums to 1.0
 
     rho_pct, tau_pct, rho_tau_pct, noise_pct, U0_pct, Ua_pct, K_pct, beta_pct = mcmc_pt
 
@@ -155,7 +158,7 @@ def mcmc_simulation_hpo_k(
             print()
 
     for iteration in range(1, num_iterations + 1):
-        r = random.random()
+        r = rng.random()
 
         iteration_list.append(iteration)
         accepted_this_iter = False
@@ -164,23 +167,27 @@ def mcmc_simulation_hpo_k(
         total_likelihood_time = 0.0
         update_type_timing = 0.0 
             # Build partial orders from current (U0, Ua)
-        U = {"U0": U0, "U_a_dict": U_a_dict}
-        h_U = StatisticalUtils.build_hierarchical_partial_orders(
-            M0=M0,
-            assessors=assessors,
-            M_a_dict=M_a_dict,
-            U0=U0,
-            U_a_dict=U_a_dict,
-            alpha=alpha
-        )
 
+        
+        log_llk_current= HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
+                    U={"U0": U0, "U_a_dict": U_a_dict},
+                    h_U=h_U,
+                    observed_orders=observed_orders,
+                    M_a_dict=M_a_dict,
+                    O_a_i_dict=O_a_i_dict,
+                    item_to_index=item_to_index,
+                    prob_noise=prob_noise,
+                    mallow_theta=mallow_theta,
+                    noise_option=noise_option,
+                    alpha=alpha
+                )
         # ------------------------------------------------
         # Update 1: Rho
         # ------------------------------------------------
         if r < thresh_rho:
             update_category = "rho"
             upd_start = time.time()
-            delta = random.uniform(dr, 1.0 / dr)
+            delta = rng.uniform(dr, 1.0 / dr)
             rho_prime = 1.0 - (1.0 - rho) * delta
             if not (0.0 < rho_prime < 1.0):
                 rho_prime = rho
@@ -200,7 +207,7 @@ def mcmc_simulation_hpo_k(
 
             log_accept = (log_prior_proposed ) - (log_prior_current ) - math.log(delta)
             accept_prob = min(1.0, math.exp(min(log_accept, 700)))
-            if random.random() < accept_prob:
+            if rng.random() < accept_prob:
                 rho = rho_prime
                 Sigma_rho = Sigma_rho_prime  # for future steps
                 log_llk_current = log_llk_proposed
@@ -233,8 +240,9 @@ def mcmc_simulation_hpo_k(
 
             log_accept = lp_proposed - lp_current
             accept_prob = min(1.0, math.exp(min(log_accept, 700)))
-            if random.random() < accept_prob:
+            if rng.random() < accept_prob:
                 tau = tau_prime
+                log_llk_current = log_llk_proposed
                 accepted_this_iter = True
                 num_acceptances += 1
                 acceptance_decisions.append(1)
@@ -249,9 +257,9 @@ def mcmc_simulation_hpo_k(
         elif r < thresh_rho_tau:
             update_category = "rho_tau"
             upd_start = time.time()
-            delta = random.uniform(drrt, 1.0 / drrt)
+            delta = rng.uniform(drrt, 1.0 / drrt)
             rho_prime = 1.0 - (1.0 - rho) * delta
-            tau_prime = 1.0 - (1.0 - tau) * (1 / delta)
+            tau_prime = 1.0 - (1.0 - tau) / delta
             Sigma_rho_prime = BasicUtils.build_Sigma_rho(K,rho_prime) 
             if not (0 < rho_prime < 1):
                 rho_prime = rho
@@ -277,9 +285,11 @@ def mcmc_simulation_hpo_k(
 
             log_accept = (lp_proposed) - (lp_current) - 2 * math.log(delta)
             accept_prob = min(1.0, math.exp(min(log_accept, 700)))
-            if random.random() < accept_prob:
+            if rng.random() < accept_prob:
                 rho = rho_prime
                 tau = tau_prime
+                Sigma_rho = Sigma_rho_prime
+                log_llk_current = log_llk_proposed
                 accepted_this_iter = True
                 num_acceptances += 1
                 acceptance_decisions.append(1)
@@ -298,7 +308,7 @@ def mcmc_simulation_hpo_k(
 
             if noise_option == "mallows_noise":
                 prior_start = time.time()
-                epsilon = np.random.normal(0, 1)
+                epsilon = rng.normal(0, 1)
                 mallow_theta_prime = mallow_theta * math.exp(sigma_mallow * epsilon)
 
                 lp_current = StatisticalUtils.dTprior(mallow_theta, ua=mallow_ua)
@@ -306,9 +316,9 @@ def mcmc_simulation_hpo_k(
                 total_prior_time = time.time() - prior_start
 
                 llk_start = time.time()
-                log_llk_current = log_llk_current
+        
                 log_llk_proposed = HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
-                    U=U,
+                    U={"U0": U0, "U_a_dict": U_a_dict},
                     h_U=h_U,
                     observed_orders=observed_orders,
                     M_a_dict=M_a_dict,
@@ -327,7 +337,7 @@ def mcmc_simulation_hpo_k(
                               + math.log(mallow_theta / mallow_theta_prime))
 
                 accept_prob = min(1.0, math.exp(min(log_accept, 700)))
-                if random.random() < accept_prob:
+                if rng.random() < accept_prob:
                     mallow_theta = mallow_theta_prime
                     log_llk_current = log_llk_proposed
                     accepted_this_iter = True
@@ -347,9 +357,9 @@ def mcmc_simulation_hpo_k(
                 total_prior_time = dt
 
                 llk_start = time.time()
-                log_llk_current = log_llk_current
+                
                 log_llk_proposed = HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
-                    U=U,
+                    U={"U0": U0, "U_a_dict": U_a_dict},
                     h_U=h_U,
                     observed_orders=observed_orders,
                     M_a_dict=M_a_dict,
@@ -365,7 +375,7 @@ def mcmc_simulation_hpo_k(
 
                 log_accept = (log_llk_proposed - log_llk_current)
                 accept_prob = min(1.0, math.exp(min(log_accept, 700)))
-                if random.random() < accept_prob:
+                if rng.random() < accept_prob:
                     prob_noise = prob_noise_prime
                     log_llk_current = log_llk_proposed
                     accepted_this_iter = True
@@ -386,16 +396,14 @@ def mcmc_simulation_hpo_k(
             upd_start = time.time()
             j_global = rng.integers(0, n_global)
             # Propose a new row for U0
-  
-            Sigma = BasicUtils.build_Sigma_rho(K,rho)
-            
+
             proposed_row = StatisticalUtils.U0_conditional_update(
                 j_global,
                 U0,
                 U_a_dict,
                 M_a_dict,
                 tau,
-                Sigma,
+                Sigma_rho,
                 rng
             )
             # Make a copy
@@ -433,6 +441,7 @@ def mcmc_simulation_hpo_k(
             if rng.random() < accept_prob:
                 U0 = U0_prime
                 U_a_dict=U_a_dict
+                h_U = h_U_prime
                 log_llk_current = log_llk_proposed
                 accepted_this_iter = True
                 num_acceptances +=1
@@ -476,18 +485,7 @@ def mcmc_simulation_hpo_k(
             total_prior_time = time.time() - prior_start
 
             llk_start = time.time()
-            log_llk_current = HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
-                U={"U0": U0, "U_a_dict": U_a_dict},
-                h_U=h_U,
-                observed_orders=observed_orders,
-                M_a_dict=M_a_dict,
-                O_a_i_dict=O_a_i_dict,
-                item_to_index=item_to_index,
-                prob_noise=prob_noise,
-                mallow_theta=mallow_theta,
-                noise_option=noise_option,
-                alpha=alpha
-            )
+
             log_llk_proposed= HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
                 U={"U0": U0, "U_a_dict": U_a_dict_prime},
                 h_U=h_U_prime,
@@ -508,6 +506,7 @@ def mcmc_simulation_hpo_k(
             if rng.random() < accept_prob:
                 U_a_dict = U_a_dict_prime
                 log_llk_current = log_llk_proposed
+                h_U = h_U_prime
                 accepted_this_iter = True
                 num_acceptances += 1
                 acceptance_decisions.append(1)
@@ -537,6 +536,7 @@ def mcmc_simulation_hpo_k(
                 # Insert a new dimension in U0
                 new_col_U0 = StatisticalUtils.sample_conditional_column(U0, rho)  # shape (n_global,)
                 U0_prime = np.insert(U0, col_ins, new_col_U0, axis=1)
+                Sigma_rho_prime = BasicUtils.build_Sigma_rho(K_prime, rho)
 
                 # For each assessor's Ua, insert a new dimension, we need to find the global k_prime index 
                 U_a_dict_prime = copy.deepcopy(U_a_dict)
@@ -567,7 +567,6 @@ def mcmc_simulation_hpo_k(
                 total_prior_time = time.time() - prior_start
 
                 llk_start = time.time()
-                log_llk_current = log_llk_current
                 log_llk_proposed= HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
                     U={"U0": U0_prime, "U_a_dict": U_a_dict_prime},
                     h_U=h_U_prime,
@@ -590,6 +589,7 @@ def mcmc_simulation_hpo_k(
                     K = K_prime
                     U0 = U0_prime
                     U_a_dict = U_a_dict_prime
+                    Sigma_rho = Sigma_rho_prime
                     h_U = h_U_prime
                     log_llk_current =  log_llk_proposed
                     accepted_this_iter = True
@@ -607,6 +607,7 @@ def mcmc_simulation_hpo_k(
                     col_del = rng.integers(0, K)
                     # Remove that dimension from U0, shape => (n_global, K_prime)
                     U0_prime = np.delete(U0, col_del, axis=1)
+                    Sigma_rho_prime = BasicUtils.build_Sigma_rho(K_prime, rho)
 
                     # Remove that dimension from each Ua
                     U_a_dict_prime = copy.deepcopy(U_a_dict)
@@ -632,7 +633,7 @@ def mcmc_simulation_hpo_k(
                     total_prior_time = time.time() - prior_start
 
                     llk_start = time.time()
-                    log_llk_current = log_llk_current
+
                     log_llk_proposed= HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
                         U={"U0": U0_prime, "U_a_dict": U_a_dict_prime},
                         h_U=h_U_prime,
@@ -653,6 +654,7 @@ def mcmc_simulation_hpo_k(
                     if rng.random() < accept_prob:
                         K = K_prime
                         U0 = U0_prime
+                        Sigma_rho = Sigma_rho_prime
                         U_a_dict = U_a_dict_prime
                         h_U = h_U_prime
                         log_llk_current = log_llk_proposed
@@ -670,6 +672,8 @@ def mcmc_simulation_hpo_k(
 
 
             prior_start = time.time()
+            Sigma_prop = (drbeta**2) * (sigma_beta**2) * np.eye(p)
+
              
             epsilon = rng.multivariate_normal(np.zeros(p), Sigma_prop)
             beta_prime = beta + epsilon
@@ -690,9 +694,9 @@ def mcmc_simulation_hpo_k(
             )
 
             llk_start = time.time()
-            log_llk_current = log_llk_current
+        
             log_llk_proposed = HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
-                U=U,
+                U={"U0": U0, "U_a_dict": U_a_dict},
                 h_U=h_U_prime,
                 observed_orders=observed_orders,
                 M_a_dict=M_a_dict,
@@ -711,6 +715,7 @@ def mcmc_simulation_hpo_k(
                 beta = beta_prime
                 alpha = alpha_prime  # update alpha as well
                 log_llk_current = log_llk_proposed
+                h_U = h_U_prime
                 accepted_this_iter = True
                 num_acceptances += 1
                 acceptance_decisions.append(1)
@@ -721,6 +726,7 @@ def mcmc_simulation_hpo_k(
         # End of updates, record iteration info
         # ----------------------------------------------------------------
         current_accept_rate = num_acceptances / iteration
+        acceptance_rates.append(current_accept_rate)
         update_category_list.append(update_category)
         prior_timing_list.append(total_prior_time)
         likelihood_timing_list.append(total_likelihood_time)
@@ -741,7 +747,7 @@ def mcmc_simulation_hpo_k(
 
         log_likelihood_currents.append(log_llk_current)
         # We used log_llk_proposed for new states, but we can store it if needed
-        log_likelihood_primes.append(log_llk_current)  # or keep a separate variable
+        log_likelihood_primes.append(log_llk_proposed)  # or keep a separate variable
 
         if iteration in progress_intervals:
             print(f"Iteration {iteration}/{num_iterations} - Accept Rate: {current_accept_rate:.2%}")

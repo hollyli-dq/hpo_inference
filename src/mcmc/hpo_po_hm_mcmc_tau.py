@@ -89,6 +89,7 @@ def mcmc_simulation_hpo(
 
 
     p = X.shape[0]
+    print(f"p value is : {p}")
     beta = rng.normal(loc=0.0, scale=sigma_beta, size=(p,))
     alpha = X.T @ beta
 
@@ -174,7 +175,10 @@ def mcmc_simulation_hpo(
 
     for iteration in range(1,num_iterations+1):
 
+
         r = rng.random()
+
+
         accepted_this_iter = False
         update_category = None
         total_prior_time = 0.0
@@ -186,15 +190,6 @@ def mcmc_simulation_hpo(
         # We'll define "U" as a dict holding both global a local latents
 
         U= {"U0": U0, "U_a_dict": U_a_dict}
-        h_U = StatisticalUtils.build_hierarchical_partial_orders(
-            M0=M0,
-            assessors=assessors,
-            M_a_dict=M_a_dict,
-            U0=U0,
-            U_a_dict=U_a_dict,
-            alpha=alpha
-            ) 
-    
         log_llk_current =HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
                 U=U,
                 h_U=h_U,
@@ -254,21 +249,25 @@ def mcmc_simulation_hpo(
         elif r < thresh_tau:
             update_category = "tau"
             upd_start = time.time()
-            tau_prime = StatisticalUtils.rTauprior()
+            psi_current = math.log(tau/ (1.0 - tau))
+            sigma_psi = 0.1
+            eps        = rng.normal(0.0, sigma_psi)          # σ_ψ ≈ 0.10 – 0.30 works well
+            psi_prop   = psi_current + eps
+            tau_prime   = 1.0 / (1.0 + math.exp(-psi_prop))   # inverse-logit
+
+            # 2. Jacobian term: log |J|
+            log_jac = ( math.log(tau_prime) + math.log(1.0 - tau_prime)
+                    - math.log(tau      ) - math.log(1.0 - tau) )
 
             prior_start = time.time()
             log_prior_current = (
-
-                 StatisticalUtils.log_U_a_prior(U_a_dict, tau, rho, K, M_a_dict, U0)
-      
-            )
+                 StatisticalUtils.log_U_a_prior(U_a_dict, tau, rho, K, M_a_dict, U0)         )
             # new prior
             log_prior_proposed = (
       
                 StatisticalUtils.log_U_a_prior(U_a_dict, tau_prime, rho, K, M_a_dict, U0)
             )
             total_prior_time = time.time() - prior_start
-
             llk_start = time.time()     
             log_llk_proposed = log_llk_current
             dt = time.time() - llk_start
@@ -277,7 +276,7 @@ def mcmc_simulation_hpo(
             # Data-likelihood may or may not change if code uses tau explicitly in the likelihood
             # We'll assume it does not, or does so in partial
             # We'll skip re-sampling U => same partial approach
-            log_accept_ratio = log_prior_proposed - log_prior_current 
+            log_accept_ratio = log_prior_proposed - log_prior_current + log_jac
             
             log_accept_ratio=min(log_accept_ratio,700)
             accept_prob = min(1.0, math.exp(min(log_accept_ratio, 700)))
@@ -650,6 +649,7 @@ def mcmc_simulation_hpo(
             # For U_a_dict, store a deep copy.
             Ua_trace.append(copy.deepcopy(U_a_dict))
             H_trace.append(copy.deepcopy(h_U))
+            acceptance_rates.append(num_acceptances / (iteration + 1))
             update_records.append((iteration, update_category, accepted_this_iter))
 
         current_acceptance_rate = num_acceptances / iteration

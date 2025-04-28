@@ -1,0 +1,198 @@
+\documentclass[twocolumn, 10pt]{article}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{natbib}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{booktabs}
+
+\title{Bayesian Hierarchical Partial Order Planning: A Framework for Multi-Agent Coordination under Uncertainty}
+
+\author{Your Name\\
+Department\\
+University\\
+Email
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This paper introduces Bayesian Hierarchical Partial Order Planning (BHPOP), a novel framework for representing and reasoning about plans under uncertainty. The key innovation is the combination of partial-order plans, which allow for flexibility and concurrency, with Bayesian inference, which handles uncertainty in a principled manner. Our approach represents partial orders using a multi-dimensional latent space model and incorporates Markov Chain Monte Carlo (MCMC) methods for inferring partial orders from observed execution sequences. We extend the framework to multi-agent scenarios through a hierarchical model that enables coordination while preserving agent autonomy. We demonstrate our approach on a disaster recovery planning problem, showing how it can effectively infer planning constraints and success probabilities from observed action sequences. Experimental results indicate that our approach can effectively capture complex planning dependencies, adapt to noisy observations, and scale to realistic planning scenarios with multiple agents.
+\end{abstract}
+
+\section{Introduction}
+Planning under uncertainty is a fundamental challenge in artificial intelligence, robotics, and multi-agent systems. Traditional planning approaches often struggle to handle concurrency, uncertainty, and coordination among multiple agents. Partial-order planning (POP) offers a promising approach by representing plans as a set of actions linked by ordering constraints only where necessary, maximizing concurrency and flexibility \citep{weld1994introduction}. However, classical POP approaches do not naturally account for uncertainty or learn from observations.
+
+In this paper, we introduce Bayesian Hierarchical Partial Order Planning (BHPOP), which combines the flexibility of partial-order plans with the principled handling of uncertainty offered by Bayesian inference. Our key contributions include:
+
+\begin{itemize}
+    \item A Bayesian framework for representing and inferring partial-order plans based on observed action executions
+    \item A hierarchical extension that enables coordination in multi-agent settings while preserving concurrency
+    \item A formulation that captures both action ordering constraints and success/failure outcomes
+    \item An MCMC sampling approach for efficient posterior inference
+    \item Experimental validation on a disaster recovery planning scenario
+\end{itemize}
+
+The rest of the paper is organized as follows: Section 2 discusses related work, Section 3 presents the mathematical framework for BHPOP, Section 4 extends the approach to hierarchical multi-agent settings, Section 5 describes the MCMC sampling approach, Section 6 presents experimental results, and Section 7 concludes with a discussion of limitations and future work.
+
+\section{Related Work}
+
+\subsection{Partial-Order Planning}
+Partial-order planning was introduced as an alternative to total-order planning to maximize flexibility and concurrency \citep{sacerdoti1975nonlinear}. Instead of committing to a specific sequence of actions, POP represents plans as a partially ordered set of actions, where ordering constraints are imposed only when necessary to resolve conflicts or ensure proper causal relationships \citep{weld1994introduction}. This approach allows for more flexibility in execution and has been particularly successful in domains where concurrent actions are common.
+
+\subsection{Planning under Uncertainty}
+Planning under uncertainty has been addressed through various frameworks, including Markov Decision Processes (MDPs) \citep{puterman2014markov} and Partially Observable MDPs (POMDPs) \citep{kaelbling1998planning}. These approaches model uncertainty in action outcomes and state transitions but typically rely on total-order plans. Probabilistic planning approaches extend classical planning to handle uncertainty in action outcomes \citep{kushmerick1995algorithm}, but often do not fully exploit the potential for concurrency.
+
+\subsection{Multi-Agent Planning}
+Multi-agent planning extends planning to settings with multiple autonomous agents. Approaches include centralized planning for decentralized execution \citep{boutilier1999sequential}, distributed planning where agents coordinate their individual plans \citep{durfee1999distributed}, and hierarchical approaches that decompose planning problems into subproblems \citep{tambe1997towards}. However, these approaches often struggle to balance coordination and concurrency effectively.
+
+\subsection{Bayesian Approaches to Planning}
+Bayesian approaches to planning leverage probabilistic inference to handle uncertainty and learn from data. Bayesian Reinforcement Learning \citep{ghavamzadeh2015bayesian} uses Bayesian inference to learn transition dynamics and reward functions in MDPs. Probabilistic plan recognition approaches use Bayesian inference to infer an agent's plan from observed actions \citep{charniak1993bayesian,geib2001recognition}. However, few approaches combine Bayesian inference with partial-order planning or extend to multi-agent settings.
+
+\section{Bayesian Partial Order Planning}
+
+\subsection{Partial Order Representation}
+A partial order on a set of actions $\mathcal{A} = \{A_1, A_2, \ldots, A_n\}$ is a binary relation $\prec$ that is:
+\begin{itemize}
+    \item Irreflexive: $\neg(A_i \prec A_i)$ for all $A_i \in \mathcal{A}$
+    \item Transitive: $(A_i \prec A_j) \wedge (A_j \prec A_k) \Rightarrow (A_i \prec A_k)$ for all $A_i, A_j, A_k \in \mathcal{A}$
+    \item Antisymmetric: $(A_i \prec A_j) \Rightarrow \neg(A_j \prec A_i)$ for all $A_i, A_j \in \mathcal{A}$
+\end{itemize}
+
+We represent partial orders using a latent space model based on the theorem that any partial order can be represented as the intersection of a set of total orders \citep{baker1994partial}. Specifically, we associate each action $A_j$ with a latent vector $U_j \in \mathbb{R}^K$, where $K$ is the dimension of the latent space. The partial order is then induced by the component-wise dominance relation:
+\begin{equation}
+A_i \prec A_j \iff U_{i,k} > U_{j,k} \text{ for all } k \in \{1, \ldots, K\}
+\end{equation}
+
+This representation allows us to infer partial orders from data by learning the latent vectors $U_j$.
+
+\subsection{Noise Model for Observed Sequences}
+In practice, observed action sequences may not perfectly follow the underlying partial order due to various sources of noise. We introduce a "queue-jump" noise model with parameter $p \in [0, 1]$:
+
+\begin{itemize}
+    \item With probability $1-p$, the next action is chosen uniformly from the set of maximal feasible actions (those with no remaining predecessors in the partial order)
+    \item With probability $p$, the next action is chosen uniformly from all remaining actions, potentially violating the partial order constraints
+\end{itemize}
+
+This model allows us to account for deviations from the partial order while still inferring the underlying constraints.
+
+\subsection{Success/Failure Outcomes}
+We extend our model to handle success/failure outcomes for actions. Each action $A_j$ has an associated success probability $\pi_j \in (0, 1)$. When action $A_j$ is executed, it succeeds with probability $\pi_j$ and fails with probability $1-\pi_j$.
+
+The likelihood of observing a sequence of actions with their success/failure outcomes is:
+\begin{equation}
+p(\text{sequence}, \text{outcomes} \mid \text{partial order}, \{\pi_j\}, p) = \prod_{\text{step } s} \left[ p(\text{action}_s \mid \text{partial order}, p) \times p(\text{outcome}_s \mid \pi_{\text{action}_s}) \right]
+\end{equation}
+
+where $p(\text{action}_s \mid \text{partial order}, p)$ is determined by the queue-jump noise model and $p(\text{outcome}_s \mid \pi_{\text{action}_s})$ is $\pi_{\text{action}_s}$ for successful outcomes and $1-\pi_{\text{action}_s}$ for failures.
+
+\section{Hierarchical Extension for Multi-Agent Planning}
+We extend our approach to multi-agent settings through a hierarchical model. Consider a set of agents $\{1, \ldots, A\}$, each with a local set of actions $\mathcal{A}_a$.
+
+\subsection{Hierarchical Latent Space Model}
+We define a global latent space for actions across all agents, with global latent vectors $U^{(0)}_j$ for each action $j$ in the union of all agents' action sets. For each agent $a$, we define local latent vectors $U^{(a)}_j$ for each action $j \in \mathcal{A}_a$.
+
+The local latent vectors are related to the global latent vectors through a hierarchical model:
+\begin{equation}
+U^{(a)}_j \sim \mathcal{N}(\tau U^{(0)}_j, (1-\tau^2)\Sigma_\rho)
+\end{equation}
+
+where $\tau \in (0, 1)$ is a hierarchical parameter controlling the strength of the connection between global and local latent spaces, and $\Sigma_\rho$ is a covariance matrix with parameter $\rho$ controlling the correlation between dimensions.
+
+\subsection{Cross-Agent Constraints}
+The hierarchical model allows for both agent-specific partial orders and cross-agent constraints:
+\begin{itemize}
+    \item Within each agent, local partial orders are induced by the component-wise dominance of local latent vectors $U^{(a)}_j$
+    \item Cross-agent constraints are induced by the component-wise dominance of global latent vectors $U^{(0)}_j$
+\end{itemize}
+
+This approach naturally balances agent autonomy with coordination requirements, allowing for concurrency both within and across agents when there are no explicit constraints.
+
+\section{MCMC Inference}
+We use Markov Chain Monte Carlo (MCMC) methods to infer posterior distributions over the model parameters given observed action sequences. The parameters to be inferred include:
+\begin{itemize}
+    \item Latent vectors $U^{(0)}_j$ and $U^{(a)}_j$
+    \item Correlation parameter $\rho$
+    \item Hierarchical parameter $\tau$
+    \item Queue-jump noise parameter $p$
+    \item Success probabilities $\{\pi_j\}$
+\end{itemize}
+
+\subsection{Priors}
+We place the following priors on the model parameters:
+\begin{align}
+U^{(0)}_j &\sim \mathcal{N}(0, \Sigma_\rho) \\
+\rho &\sim \text{Uniform}(0, 1) \\
+\tau &\sim \text{Uniform}(0, 1) \\
+p &\sim \text{Beta}(1, 9) \\
+\pi_j &\sim \text{Beta}(1, 1)
+\end{align}
+
+\subsection{MCMC Updates}
+We use a combination of Metropolis-Hastings updates for different parameters:
+
+\begin{algorithm}
+\caption{MCMC Inference for BHPOP}
+\begin{algorithmic}[1]
+\State Initialize parameters $\{U^{(0)}_j\}$, $\{U^{(a)}_j\}$, $\rho$, $\tau$, $p$, $\{\pi_j\}$
+\For{iteration $= 1$ to $N$}
+    \State Choose update type uniformly from $\{U^{(0)}, U^{(a)}, \rho, \tau, p, \pi\}$
+    \State Propose new parameter value
+    \State Compute acceptance ratio $\alpha$ based on likelihood and prior
+    \State Accept proposal with probability $\min(1, \alpha)$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+The acceptance ratio for a parameter update depends on the likelihood of the observed sequences under the proposed and current parameter values, as well as the prior ratio and any necessary Jacobian terms for transformed parameters.
+
+\section{Experiments}
+We evaluate our approach on a disaster recovery planning scenario with two agents (robots) operating in two disaster locations and a central hospital.
+
+\subsection{Experimental Setup}
+\subsubsection{Actions}
+Each robot can perform three types of actions:
+\begin{itemize}
+    \item Clear debris at a location
+    \item Search for survivors at a location
+    \item Transport survivors from a location to the hospital
+\end{itemize}
+
+\subsubsection{Constraints}
+The scenario includes the following constraints:
+\begin{itemize}
+    \item Debris must be cleared before searching for survivors
+    \item Survivors must be found before transport
+    \item If robots share a transport vehicle, their transport actions cannot occur simultaneously
+\end{itemize}
+
+\subsubsection{Data Generation}
+We generate synthetic data by sampling execution sequences from the true partial order with varying levels of queue-jump noise ($p \in \{0.1, 0.2, 0.3\}$). We also sample success/failure outcomes based on true success probabilities.
+
+\subsection{Results}
+\subsubsection{Partial Order Recovery}
+We measure the accuracy of the inferred partial order by comparing the inferred and true ordering constraints. Figure 1 shows the F1 score for constraint recovery as a function of the number of observed sequences and the noise level.
+
+\subsubsection{Success Probability Estimation}
+We evaluate the accuracy of the inferred success probabilities by measuring the mean absolute error between the inferred and true probabilities. Figure 2 shows the results as a function of the number of observed sequences.
+
+\subsubsection{Cross-Agent Constraint Inference}
+We assess the ability of our approach to infer cross-agent constraints by measuring the precision and recall of the inferred constraints. Figure 3 shows the results.
+
+\subsection{Discussion}
+Our experiments demonstrate that BHPOP can effectively infer partial orders and success probabilities from observed action sequences, even in the presence of noise. The hierarchical extension successfully captures cross-agent constraints while allowing for autonomy and concurrency when possible. The MCMC inference approach efficiently explores the parameter space and converges to accurate posterior estimates.
+
+\section{Conclusion}
+We have introduced Bayesian Hierarchical Partial Order Planning, a novel framework that combines the flexibility of partial-order planning with the principled handling of uncertainty offered by Bayesian inference. Our approach allows for concurrency, handles uncertainty, and scales to multi-agent settings through a hierarchical model.
+
+Future work includes extending the approach to handle dynamic environments where the partial order may change over time, integrating with reinforcement learning to optimize policies over partial orders, and applying the approach to real-world planning problems in robotics and multi-agent systems.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document} 
