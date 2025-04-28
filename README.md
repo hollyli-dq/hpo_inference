@@ -1,6 +1,6 @@
 # Hierarchical Partial Orders (HPO) Inference
 
-A Bayesian framework for inferring hierarchical partial orders from ranking data. This implementation is based on research from the paper "Partial Order Hierarchies and Rank-Order Data".
+A Bayesian framework for inferring hierarchical partial orders from ranking data. This implementation is based on research from the paper "**Partial Order Hierarchies and Rank-Order Data**".
 
 ## Background
 
@@ -18,9 +18,9 @@ We carry out Bayesian inference for the poset hierarchy using MCMC. Evaluation o
 
 This project implements a Bayesian approach to infer latent hierarchical partial orders from observed rankings/preferences. It uses Markov Chain Monte Carlo (MCMC) methods to perform posterior inference on model parameters.
 
-### Theorem 9 — *Hierarchical Partial‑Order (HPO)*
+### Theorem: *Hierarchical Partial‑Order (HPO)*
 
-Let $\alpha_M = X\beta$ and $\Sigma_\rho$ be as in Section 3; $0 < \tau \le 1$; $M_a \in \mathcal B_M$ for each assessor $a\in A$; and $M_0 = \displaystyle\bigcup_{a=1}^{A} M_a$.
+Let $\alpha_M = X\beta$ , $0 < \tau \le 1$; $M_a \in \mathcal B_M$ for each assessor $a\in A$; and $M_0 = \displaystyle\bigcup_{a=1}^{A} M_a$.
 
 #### Latent Gaussian hierarchy
 
@@ -42,9 +42,9 @@ $$
 
 Define $\eta(U,\beta)=\bigl(\eta^{(0)},\eta^{(1)},\dots,\eta^{(A)}\bigr)$ and $h = h\!\bigl(\eta(U,\beta)\bigr)$.
 
-## Features
+## Package Features
 
-- **Hierarchical Partial Order Generation**: Create synthetic hierarchical partial order structures with global and assessor-specific components
+- **Hierarchical Partial Order Generation**: Create synthetic hierarchical partial order structures with global and assessor-specific levels. The POs are generated in a
 - **Data Input/Output**: Define assessor item sets and generate/load ranking data from various formats
 - **Total Order Generation**: Generate observed total orders from hierarchical partial orders with configurable noise models
 - **MCMC Inference**:
@@ -57,7 +57,7 @@ Define $\eta(U,\beta)=\bigl(\eta^{(0)},\eta^{(1)},\dots,\eta^{(A)}\bigr)$ and $h
 ## Project Structure
 
 ```
-hpo_inference/
+#hpo_inference/
 ├── src/
 │   ├── mcmc/                 # MCMC implementation
 │   │   ├── hpo_po_hm_mcmc.py # Fixed K implementation
@@ -72,9 +72,11 @@ hpo_inference/
 ├── config/                   # Configuration files
 │   └── hpo_mcmc_configuration.yaml
 ├── notebooks/                # Example analyses
-│   └── hpo_mcmc_simulation.ipynb
+│   └── hpo_mcmc_simulation_rj.ipynb # Example with reversible jump 
+│   └── hpo_mcmc_simulation.ipynb # Example with no reversible jump
 └── data/
-    └── observed_rankings.csv # Generated rankings
+    └── observed_rankings.csv # ranking lists
+    └── item_characteristics.csv # Generate partial orders
 ```
 
 ## Installation
@@ -96,6 +98,7 @@ K = 3                       # Latent dimension
 rho_prior = 0.1667          # Prior parameter for correlation
 n = len(items_df['item_id'].unique())      # Number of items in global set
 items = list(range(n))      # Global item set
+beta_true =rng.normal(loc=0.0, scale=sigma_beta, size=(p,))
 
 # Define assessor structure
 assessors = assessors_df['assessor_id'].tolist()       # Assessor IDs
@@ -104,6 +107,11 @@ M_a_dict = {
     2: [1, 3, 5, 7, 9],     # Assessor 2 evaluates odd-indexed items
     3: [0, 1, 2, 3, 4]      # Assessor 3 evaluates first five items
 }
+
+# Read in covariate
+covariate_cols = [col for col in items_df.columns if col.startswith('covariate_')]
+X_values = items_df[covariate_cols].values
+alpha = X.T @ beta_true 
 
 # Generate the hierarchical partial orders
 h_U_dict = StatisticalUtils.build_hierarchical_partial_orders(
@@ -125,6 +133,8 @@ O_a_i_dict = GenerationUtils.generate_choice_sets_for_assessors(
     min_tasks=n*2,        # Number of tasks per assessor
     min_size=2            # Minimum items per choice set
 )
+
+prob_noise_true=0.1 # queue_noise_setting
 
 # Generate observed total orders from the hierarchical partial orders
 y_a_i_dict = GenerationUtils.generate_total_orders_for_assessor(
@@ -164,7 +174,7 @@ mcmc_results = mcmc_simulation_hpo(
     observed_orders=y_a_i_dict,
     sigma_beta=sigma_beta,  
     X=X,  
-        K=K,    
+        K=K,  
         dr=dr,
         drrt=drrt,
     drbeta=drbeta,
@@ -183,6 +193,7 @@ mcmc_results = mcmc_simulation_hpo(
 
 ```python
 # Update probabilities including K moves
+K_prior=config["prior"]["k_prior"]
 mcmc_pt = [
     config["mcmc"]["update_probabilities"]["rho"],
     config["mcmc"]["update_probabilities"]["tau"],
@@ -243,12 +254,14 @@ python -m tests.hpo_debugger_test beta      # Test covariate parameter updates
 python -m tests.extreme_case_test
 ```
 
+* Results can be read under the hpo_test_output file. For the math behind those checks, please review the appendix of the paper.
+
 ### Parameter Tests (hpo_debugger_test.py)
 
-The `hpo_debugger_test.py` script includes multiple functions for testing different MCMC parameter updates:
+The `hpo_debugger_test.py` script includes multiple functions for testing different MCMC parameter updates. This script gives no data into the model and assign 100% update for each parameter (the rest is 0%)  when checking it:
 
 - **check_rho()**: Tests if the correlation parameter ρ follows its theoretical posterior distribution (truncated Beta). Outputs histograms and diagnostic plots.
-- **check_tau()**: Tests if the hierarchical coupling parameter τ follows its theoretical distribution (Uniform). Outputs histograms with theoretical overlays.
+- **check_tau()**:  Outputs histograms with theoretical overlays.
 - **check_rho_tau()**: Tests joint updates of ρ and τ parameters using reversible proposals. Checks acceptance rates and distribution accuracy.
 - **check_P()**: Tests updates of probability noise parameter for queue-jump noise model. Validates against theoretical Beta distribution.
 - **check_theta()**: Tests Mallows theta parameter updates for the Mallows noise model. Verifies exponential prior recovery.
@@ -260,8 +273,7 @@ The `hpo_debugger_test.py` script includes multiple functions for testing differ
 Each test function outputs:
 
 - Distribution histograms with theoretical overlays
-- Trace plots showing MCMC mixing
-- Log-likelihood diagnostics
+- Log-likelihood diagnostics is 0
 - Acceptance rate statistics
 
 ### Extreme Case Tests (extreme_case_test.py)
@@ -283,7 +295,7 @@ sampling:
  min_size: 2                # Minimum size of choice sets
 
 mcmc:
-  num_iterations: 50000     # Total number of MCMC iterations
+  num_iterations: 100000     # Total number of MCMC iterations
   K: 3                      # Latent dimension for fixed-K inference
   update_probabilities:
     rho: 0.1                # Proportion of iterations to update rho
@@ -294,6 +306,31 @@ mcmc:
     U_a: 0.2                # Proportion of iterations to update assessor-specific latent variables
     K: 0.1                  # Proportion of iterations to update K (for reversible jump)
     beta: 0.1               # Proportion of iterations to update covariates
+
+# Configuration for updating ρ.
+rho:
+  dr: 0.1                     # Multiplicative step size for rho update.
+
+# Configuration for updating ρ&τ.
+rhotau:
+  drrt: 0.8            # Multiplicative step size for rho tau update.
+
+beta:
+  drbeta: 0.05                     # Multiplicative step size for beta update.
+
+# Configuration for noise parameter updates.
+noise:
+  noise_option: "queue_jump"  # Options: "mallows_noise" or "queue_jump".
+  sigma_mallow: 0.5           # Proposal standard deviation for Mallows theta update.
+
+# Prior parameters.
+prior:
+  rho_prior: 0.16667          # Prior parameter for rho.
+  noise_beta_prior: 9       # Beta prior parameter for the noise parameter.
+  mallow_ua: 10             # Exponential rate parameter for Mallows theta.
+  k_prior: 3              # Prior parameter for the number of latent dimensions K.
+  sigma_beta: 1.0        # Prior standard deviation for beta.
+
 ```
 
 To enable/disable reversible jump K inference:
@@ -313,12 +350,12 @@ This file contains information about the items, assessors, and selective sets:
 
 - **Items Section**:
 
-  - `item_id`: Unique identifier for each item (0-9)
+  - `item_id`: Unique identifier for each item
   - `label`: Descriptive label for each item (e.g., "Product A")
   - `covariate_1` to `covariate_5`: Five-dimensional covariates for each item
 - **Assessors Section**:
 
-  - `assessor_id`: Unique identifier for each assessor (1-5)
+  - `assessor_id`: Unique identifier for each assessor
   - `name`: Name of the assessor
 - **Selective Sets Section**:
 

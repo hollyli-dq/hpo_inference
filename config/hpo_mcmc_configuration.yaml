@@ -20,9 +20,6 @@ mcmc:
     K: 0.1               # Proportion of iterations to update the number of latent dimensions K.
     beta: 0.1
 
-#    K: 0.2                     # Proportion of iterations to update the number of latent dimensions K.
-reversible_two_factors:
-  rho_tau_update: True 
 
 # Configuration for updating ρ.
 rho:
