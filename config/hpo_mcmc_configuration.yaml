@@ -8,7 +8,7 @@ sampling:
 # MCMC run configuration.
 mcmc:
   num_iterations: 100000         # Total number of MCMC iterations.
-  num_iterations_debug: 10000    # Number of iterations to print debug information.
+  num_iterations_debug: 100000    # Number of iterations to print debug information.
   K: 3                         # Latent dimension (number of columnsin U).
   update_probabilities:
     rho: 0.1                   # Proportion of iterations to update rho.
@@ -30,7 +30,7 @@ rhotau:
   drrt: 0.8            # Multiplicative step size for rho tau update.
 
 beta:
-  drbeta: 0.05                     # Multiplicative step size for beta update.
+  drbeta: 0.1                     # Multiplicative step size for beta update.
 
 # Configuration for noise parameter updates.
 noise:

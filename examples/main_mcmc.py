@@ -461,12 +461,10 @@ def analyze_results(
         k: (v[burn_in:] if isinstance(v, (list, np.ndarray)) else v) 
         for k, v in results.items()
     }
+    print(filtered_results.keys())
 
     # ─────────────────────── final partial‑order matrices -----------------
     h_trace = filtered_results.get("H_trace", [])
-    if not h_trace:
-        print("WARNING: H_trace not found – skipping partial‑order aggregation.")
-        return
 
     assessors = list(h_trace[0].keys())
     threshold = edge_threshold
