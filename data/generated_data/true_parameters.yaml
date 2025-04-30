@@ -1,0 +1,13 @@
+K: 3
+beta:
+- -0.09243118177263028
+- -0.3404647722019707
+noise_option: queue_jump
+num_assessors: 5
+num_covariates: 2
+num_items: 10
+prob_noise: 0.1
+random_seed: 42
+rho: 0.8
+sigma_beta: 0.5
+tau: 0.7

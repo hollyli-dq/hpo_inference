@@ -48,7 +48,9 @@ def mcmc_simulation_hpo_k(
 
     # 1) Prepare global item set and initialization
     items = sorted(set(M0))
+    print(M0)
     item_to_index = {item: idx for idx, item in enumerate(items)}
+    print(item_to_index)
     n_global = len(M0)
 
     # Sample initial parameters

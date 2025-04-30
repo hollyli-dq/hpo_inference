@@ -74,8 +74,6 @@ noise_beta_prior = prior_config["noise_beta_prior"]
 mallow_ua = prior_config["mallow_ua"] 
 K_prior = prior_config["k_prior"]   
 
-rho_tau_update = config["reversible_two_factors"]["rho_tau_update"] 
-
 def check_log_likelihood(results: dict) -> float:
     """
     Check that the sum of the current and proposed log likelihoods is close to 0.

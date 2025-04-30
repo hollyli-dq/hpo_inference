@@ -25,11 +25,13 @@ GenerationUtils.generate_U(n: int, K: int, rho_val: float) -> np.ndarray
 Generates a latent variable matrix U of size n × K from a multivariate normal distribution with zero mean and correlation parameter rho_val.
 
 **Parameters:**
+
 - `n`: Number of observations (items)
 - `K`: Number of latent dimensions
 - `rho_val`: Correlation value for the covariance matrix
 
 **Returns:**
+
 - An n × K numpy array of latent positions
 
 ### `generate_choice_sets_for_assessors`
@@ -45,11 +47,13 @@ GenerationUtils.generate_choice_sets_for_assessors(
 For each assessor, generates a set of choice sets (subsets of items to be ranked).
 
 **Parameters:**
+
 - `M_a_dict`: Dictionary mapping assessor IDs to their overall list of item IDs
 - `min_tasks`: Minimum number of tasks (choice sets) per assessor
 - `min_size`: Minimum number of items in each choice set
 
 **Returns:**
+
 - Dictionary mapping assessor IDs to lists of choice sets
 
 ### `generate_total_orders_for_assessor`
@@ -66,12 +70,14 @@ GenerationUtils.generate_total_orders_for_assessor(
 For each assessor, generates total orders (linear extensions) from their local partial order.
 
 **Parameters:**
+
 - `h_dict`: Dictionary mapping assessor IDs to local partial order matrices
 - `M_a_dict`: Dictionary mapping assessor IDs to their ordered list of global item IDs
 - `O_a_i_dict`: Dictionary mapping assessor IDs to a list of choice sets
 - `prob_noise`: Noise (jump) probability for the queue-jump model
 
 **Returns:**
+
 - Dictionary mapping assessor IDs to lists of total orders
 
 ## Basic Utilities
@@ -87,10 +93,12 @@ BasicUtils.build_Sigma_rho(K: int, rho_val: float) -> np.ndarray
 Constructs a K × K correlation matrix with 1's on the diagonal and rho_val on all off-diagonal elements.
 
 **Parameters:**
+
 - `K`: Dimension of the matrix
 - `rho_val`: Value for off-diagonal elements
 
 **Returns:**
+
 - A K × K correlation matrix
 
 ### `transitive_reduction`
@@ -102,9 +110,11 @@ BasicUtils.transitive_reduction(adj_matrix: np.ndarray) -> np.ndarray
 Computes the transitive reduction of a partial order (minimizes redundant edges).
 
 **Parameters:**
+
 - `adj_matrix`: An n × n numpy array representing the adjacency matrix of the partial order
 
 **Returns:**
+
 - The transitive reduction as an n × n numpy array
 
 ### `transitive_closure`
@@ -116,9 +126,11 @@ BasicUtils.transitive_closure(adj_matrix: np.ndarray) -> np.ndarray
 Computes the transitive closure of a relation (adds all implied edges).
 
 **Parameters:**
+
 - `adj_matrix`: An n × n numpy array representing the adjacency matrix of the relation
 
 **Returns:**
+
 - The transitive closure as an n × n numpy array
 
 ### `nle`
@@ -130,9 +142,11 @@ BasicUtils.nle(tr: np.ndarray) -> int
 Counts the number of linear extensions of a partial order.
 
 **Parameters:**
+
 - `tr`: An n × n numpy array representing the adjacency matrix of the transitive reduction
 
 **Returns:**
+
 - The number of linear extensions as an integer
 
 ### `num_extensions_with_first`
@@ -144,10 +158,12 @@ BasicUtils.num_extensions_with_first(tr: np.ndarray, first_item_idx: int) -> int
 Counts how many linear extensions of a partial order have a specific item as the first element.
 
 **Parameters:**
+
 - `tr`: Adjacency matrix of the partial order
 - `first_item_idx`: Index of the item that should be first
 
 **Returns:**
+
 - The number of linear extensions with the specified first item
 
 ## Statistical Utilities
@@ -171,6 +187,7 @@ StatisticalUtils.build_hierarchical_partial_orders(
 Constructs hierarchical partial orders from latent positions according to Theorem 9.
 
 **Parameters:**
+
 - `M0`: Global set of items
 - `assessors`: List of assessor IDs
 - `M_a_dict`: Dictionary mapping assessor IDs to their item sets
@@ -180,6 +197,7 @@ Constructs hierarchical partial orders from latent positions according to Theore
 - `link_inv`: Inverse link function (default: Gumbel quantile)
 
 **Returns:**
+
 - Dictionary mapping IDs (0 for global, other IDs for assessors) to partial order matrices
 
 ### Prior Sampling Functions
@@ -217,12 +235,14 @@ StatisticalUtils.generate_total_order_for_choice_set_with_queue_jump(
 Generates a total order for a specific choice set using the queue-jump noise model.
 
 **Parameters:**
+
 - `subset`: List of global item IDs to order
 - `M_a`: List of all global item IDs for the assessor
 - `h_local`: Local partial order matrix for the assessor
 - `prob_noise`: Probability of taking a random jump
 
 **Returns:**
+
 - A total order as a list of global item IDs
 
 ## Likelihood Acceleration
@@ -249,6 +269,7 @@ HPO_LogLikelihoodCache.calculate_log_likelihood_hpo(
 Calculates the log-likelihood of observed rankings given the HPO model parameters.
 
 **Parameters:**
+
 - `U`: Dictionary of latent variables
 - `h_U`: Dictionary of partial order matrices
 - `observed_orders`: Dictionary of observed rankings
@@ -261,6 +282,7 @@ Calculates the log-likelihood of observed rankings given the HPO model parameter
 - `alpha`: Item effects vector
 
 **Returns:**
+
 - Log-likelihood value (float)
 
 ## Visualization Utilities
@@ -279,6 +301,7 @@ PO_plot.save_rankings_to_csv(
 Saves observed rankings to a CSV file.
 
 **Parameters:**
+
 - `y_a_i_dict`: Dictionary of observed rankings
 - `output_file`: Path to output CSV file
 
@@ -296,6 +319,7 @@ PO_plot.visualize_partial_order(
 Visualizes a partial order as a directed graph.
 
 **Parameters:**
+
 - `final_h`: Adjacency matrix for the partial order
 - `Ma_list`: Labels for the nodes
 - `title`: Title for the plot
@@ -319,6 +343,7 @@ PO_plot.plot_inferred_variables(
 Plots MCMC traces and posterior densities for inferred parameters.
 
 **Parameters:**
+
 - `mcmc_results`: MCMC results dictionary
 - `true_param`: Dictionary of true parameter values
 - `config`: Configuration dictionary
@@ -343,6 +368,7 @@ PO_plot.compare_and_visualize_global(
 Compares and visualizes true and inferred global partial orders.
 
 **Parameters:**
+
 - `h_true_global`: True global partial order matrix
 - `h_inferred_global`: Inferred global partial order matrix
 - `index_to_item_global`: Mapping from indices to items
@@ -358,6 +384,7 @@ PO_plot.plot_joint_parameters(mcmc_results: Dict[str, Any]) -> None
 Creates scatter plots to visualize the joint behavior of parameters.
 
 **Parameters:**
+
 - `mcmc_results`: MCMC results dictionary
 
 ### `plot_update_acceptance_by_category`
@@ -373,6 +400,7 @@ PO_plot.plot_update_acceptance_by_category(
 Plots the acceptance rates of different types of MCMC updates.
 
 **Parameters:**
+
 - `mcmc_results`: MCMC results dictionary
 - `desired_order`: Order of update categories (optional)
 - `jitter_strength`: Amount of jitter for visualization
@@ -403,7 +431,6 @@ mcmc_simulation_hpo(
     rho_prior: float,
     noise_beta_prior: float,
     mallow_ua: float,
-    rho_tau_update: bool = False,
     random_seed: int = 42
 ) -> Dict[str, Any]
 ```
@@ -411,12 +438,14 @@ mcmc_simulation_hpo(
 Performs MCMC inference for the HPO model with fixed dimension K.
 
 **Key Parameters:**
+
 - `num_iterations`: Number of MCMC iterations
 - `K`: Fixed latent dimension
 - `noise_option`: Noise model type ('queue_jump' or 'mallows_noise')
 - `mcmc_pt`: Update probabilities for different parameters
 
 **Returns:**
+
 - Dictionary with traces for all parameters, acceptance rates, and timing information
 
 ### `mcmc_simulation_hpo_k`
@@ -432,10 +461,12 @@ mcmc_simulation_hpo_k(
 Performs reversible-jump MCMC inference with varying dimension K.
 
 **Additional Parameters:**
+
 - `K_prior`: Prior parameter for dimension K
 - `mcmc_pt`: Should include probability for K dimension updates
 
 **Returns:**
+
 - Dictionary with traces for all parameters, including K
 
 ## Data Processing
@@ -451,6 +482,7 @@ prepare_mcmc_input_data() -> Dict[str, Any]
 Loads data from CSV files and prepares structures for MCMC inference.
 
 **Returns:**
+
 - Dictionary with `M0`, `assessors`, `M_a_dict`, `O_a_i_dict`, `observed_orders`, and `X`.
 
 ### `load_config`
@@ -462,9 +494,11 @@ load_config(config_path: str) -> Dict[str, Any]
 Loads YAML configuration file.
 
 **Parameters:**
+
 - `config_path`: Path to the configuration file
 
 **Returns:**
+
 - Configuration dictionary
 
 ### `run_mcmc_inference`
@@ -480,9 +514,11 @@ run_mcmc_inference(
 Runs MCMC inference with the provided data and configuration.
 
 **Parameters:**
+
 - `data`: Data dictionary from `prepare_mcmc_input_data`
 - `config`: Configuration dictionary from `load_config`
 - `use_reversible_jump`: Whether to use reversible-jump MCMC
 
 **Returns:**
-- MCMC results dictionary 
+
+- MCMC results dictionary

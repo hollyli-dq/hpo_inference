@@ -7,7 +7,7 @@ sampling:
 
 # MCMC run configuration.
 mcmc:
-  num_iterations: 1000000         # Total number of MCMC iterations.
+  num_iterations: 100000         # Total number of MCMC iterations.
   num_iterations_debug: 10000    # Number of iterations to print debug information.
   K: 3                         # Latent dimension (number of columnsin U).
   update_probabilities:
@@ -44,3 +44,7 @@ prior:
   mallow_ua: 10             # Exponential rate parameter for Mallows theta.
   k_prior: 3              # Prior parameter for the number of latent dimensions K.
   sigma_beta: 1.0        # Prior standard deviation for beta.
+
+
+analysis:
+  output_dir: "mcmc_output"

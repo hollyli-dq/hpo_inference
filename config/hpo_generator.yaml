@@ -1,0 +1,32 @@
+# Configuration for the Hierarchical Partial Order Data Generator
+
+true_parameters:
+  K_true: 3
+  rho_true: 0.8
+  tau_true: 0.7
+  sigma_beta_true: 0.5       # Std dev for generating true beta coefficients
+  noise_option: 'queue_jump' # Options: 'queue_jump', 'mallows_noise', 'none'
+  prob_noise_true: 0.05      # For queue_jump noise model
+  mallow_theta_true: 0.2     # For mallows_noise model (dispersion)
+
+setup:
+  n_items: 6
+  n_assessors: 8
+  n_covariates: 3
+  random_seed: 42
+
+sampling:
+  min_tasks_scaler: 2        # min_tasks per assessor = scaler * n_items_in_their_subset
+  min_choice_set_size: 3
+  max_choice_set_size: 5     # Optional: restrict max size, set to null or remove for no limit
+
+output_paths:
+  # Relative paths from the script location, or absolute paths
+  dir: 'generated_data'           # Base directory for generated data
+  true_params_file: 'generated_true_parameters.yaml'
+  item_chars_file: 'generated_item_characteristics.csv'
+  rankings_file: 'generated_observed_rankings.csv'
+  plot_subdir: 'plots'       # Subdirectory within data_dir for plots
+
+visualize:
+  partial_orders: true         # Generate and save plots of partial orders?
