@@ -4,6 +4,7 @@ from scipy.stats import multivariate_normal
 import networkx as nx
 import seaborn as sns
 import pandas as pd  
+import pygraphviz
 from scipy.stats import beta as beta_dist
 import itertools
 import matplotlib.pyplot as plt

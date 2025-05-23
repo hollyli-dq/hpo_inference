@@ -1276,7 +1276,7 @@ class StatisticalUtils:
             p_vec = norm.cdf(U0[j_global, :])  # coordinate-wise
             gumbel_vec = np.array([link_inv(px) for px in p_vec])
             eta0[j_global, :] = gumbel_vec + alpha[j_global]
-        
+
         h0 = BasicUtils.generate_partial_order(eta0)
 
         h_U = {}

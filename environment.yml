@@ -4,12 +4,14 @@ channels:
   - defaults
 dependencies:
   - python=3.9
-  - numpy
+  - numpy<1.20
   - scipy
+  - tqdm
+  - tabulate
   - pandas
   - matplotlib
   - seaborn
-  - pymc3
+  - pymc3<4.0
   - arviz
   - networkx
   - jupyterlab

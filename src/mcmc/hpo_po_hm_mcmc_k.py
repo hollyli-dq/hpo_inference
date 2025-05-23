@@ -48,9 +48,8 @@ def mcmc_simulation_hpo_k(
 
     # 1) Prepare global item set and initialization
     items = sorted(set(M0))
-    print(M0)
+
     item_to_index = {item: idx for idx, item in enumerate(items)}
-    print(item_to_index)
     n_global = len(M0)
 
     # Sample initial parameters
@@ -583,9 +582,10 @@ def mcmc_simulation_hpo_k(
                 )
             
                 total_likelihood_time = time.time() - llk_start
-
-
-                log_accept = (lp_proposed + log_llk_proposed) - (lp_current + log_llk_current)
+                ## this is for the adjustment for k--1
+                rho_fk = 1.0 if K==1 else 0.5
+                rho_bk = 0.5      # always 1/2 on the way back from Kp→K
+                log_accept = (lp_proposed + log_llk_proposed) - (lp_current + log_llk_current)+ math.log(rho_bk) - math.log(rho_fk)
                 accept_prob = min(1.0, math.exp(min(log_accept, 700)))
                 if rng.random() < accept_prob:
                     K = K_prime
@@ -669,16 +669,16 @@ def mcmc_simulation_hpo_k(
                 update_type_timing= time.time() - upd_start 
 
         else:
+            # for the beta update, we move it to a single update
             update_category = "beta"
             upd_start = time.time()
-
-
             prior_start = time.time()
-            Sigma_prop = (drbeta**2) * (sigma_beta**2) * np.eye(p)
+            # we update one beta each time
+            j = (iteration-1) % p
+            epsilon =   rng.normal(loc=0.0, scale=drbeta * sigma_beta)
+            beta_prime = beta.copy()
+            beta_prime[j] += epsilon
 
-             
-            epsilon = rng.multivariate_normal(np.zeros(p), Sigma_prop)
-            beta_prime = beta + epsilon
             alpha_prime = X.T @ beta_prime
             
             # Use sigma_beta_array for the prior calculation

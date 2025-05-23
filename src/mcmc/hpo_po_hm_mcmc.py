@@ -585,11 +585,13 @@ def mcmc_simulation_hpo(
         else:
             update_category = "beta"
             upd_start = time.time()
-
-
             prior_start = time.time()
-            epsilon =  rng.multivariate_normal(np.zeros(p), Sigma_prop)
-            beta_prime = beta + epsilon
+            # we update one beta each time
+            j = (iteration-1) % p
+            epsilon =   rng.normal(loc=0.0, scale=drbeta * sigma_beta)
+            beta_prime = beta.copy()
+            beta_prime[j] += epsilon
+            
             alpha_prime = X.T @ beta_prime
             lp_current = StatisticalUtils.dBetaprior(beta,sigma_beta)
             lp_proposed = StatisticalUtils.dBetaprior(beta_prime,sigma_beta)
